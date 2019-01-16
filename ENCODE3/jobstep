@@ -1,0 +1,348 @@
+#!/usr/bin/env bash
+# This is to help me keep track of the filenames
+# associated with the flow of the jobs through the pipeline
+PRJ=/projects/dcking@colostate.edu
+PIPELINE=/projects/dcking@colostate.edu/pipelines/ENCODE3
+source $PIPELINE/OUTER_VARS.sh
+
+if [ $# -lt 2 ];
+then
+    echo "$0 step sample_prefix" >&2
+    exit 1;
+fi
+
+BLUE='\e[34m'
+GREEN='\e[32m'
+RED='\e[31m'
+BLACK='\e[39m'
+BOLD='\e[1m'
+RESET='\e[0m'
+DARKGREY='\e[90m'
+YELLOW='\e[33m'
+MAG='\e[95m'
+UNDERLINE='\e[4m'
+
+underline()
+{
+    echo -e "$UNDERLINE$@$RESET"
+}
+
+lightmag()
+{
+    echo -e "$MAG$@$RESET"
+}
+
+darkgrey()
+{
+    echo -e "$DARKGREY$@$RESET"
+}
+
+bold()
+{
+    echo -e "$BOLD$@$RESET"
+}
+
+check_exist()
+{
+    if [ -z "$1" ];
+    then
+        echo -e "$(yellow BLANK VARIABLE)"
+    elif [ -e $1 ]; 
+    then 
+        if [ -s $1 ];
+        then
+            echo -e "$(green_check)"
+        else
+            echo -e "$(red_0)"
+        fi
+    else
+        echo -e "$(red_x)"
+    fi
+}
+
+yellow()
+{
+    echo -e "$YELLOW$@$RESET"
+}
+
+green()
+{
+    echo -e "$GREEN$@$BLACK"
+}
+red()
+{
+    echo -e "$RED$@$BLACK"
+}
+
+green_check()
+{
+    #echo -e "$GREEN\U2714$BLACK"
+    echo -e $(green "\U2714")
+}
+
+red_x()
+{
+    echo -e "$RED\U2716$BLACK"; 
+}
+red_0()
+{
+    echo -e "${RED}\U2205$BLACK"; 
+}
+
+down_arrow()
+{
+    echo -e "\U2193";
+}
+right_arrow()
+{
+    echo -e "\U2192";
+}
+
+info()
+{
+    echo -e "$BLUE\U2725$BLACK"
+}
+    
+step=$1
+sample_name=$2
+
+case $step in
+
+1a)
+    echo -e "$UNDERLINE$sample_name for step $(bold $step: Read alignment \(BWA aligner\))"
+    FASTQ_FILE_1=$(ls ../01_RAW/$sample_name*.fastq)
+    echo "$(right_arrow) $(check_exist $FASTQ_FILE_1) FASTQ_FILE_1=$FASTQ_FILE_1 "
+    OFPREFIX=$(basename ${FASTQ_FILE_1%.*}) # notdir, noext: equal to $sample_name
+    echo " $(info) OFPREFIX=$OFPREFIX"
+    RAW_BAM_PREFIX="${OFPREFIX}.raw.srt"
+    RAW_BAM_FILE="${RAW_BAM_PREFIX}.bam" # To be stored
+    RAW_BAM_FILE_MAPSTATS="${RAW_BAM_PREFIX}.flagstat.qc" # QC File
+    echo " $(info) RAW_BAM_PREFIX=$RAW_BAM_PREFIX"
+    echo "$(down_arrow) $(check_exist $RAW_BAM_FILE) RAW_BAM_FILE=$RAW_BAM_FILE"
+    echo "$(down_arrow) $(check_exist $RAW_BAM_FILE_MAPSTATS) RAW_BAM_FILE_MAPSTATS=$RAW_BAM_FILE_MAPSTATS"
+;;
+1b)
+    echo -e "$UNDERLINE$sample_name for step $(bold $step: Post-alignment filtering)"
+    echo "***some samples will not have \"trimmed\" in the name***"
+    OFPREFIX=$sample_name
+    OFPREFIX_TRIMMED=$sample_name.trimmed
+    echo " $(info) OFPREFIX_TRIMMED=$OFPREFIX_TRIMMED"
+    RAW_BAM_PREFIX="${OFPREFIX_TRIMMED}.raw.srt"
+    echo " $(info) RAW_BAM_PREFIX=$RAW_BAM_PREFIX"
+    RAW_BAM_FILE="${RAW_BAM_PREFIX}.bam" # To be stored
+    echo "$(right_arrow) $(check_exist $RAW_BAM_FILE) RAW_BAM_FILE=$RAW_BAM_FILE"
+    # this section drops the "trimmed"
+    FINAL_BAM_PREFIX="$(final_bam_prefix $OFPREFIX)"
+    echo " $(info) FINAL_BAM_PREFIX=$FINAL_BAM_PREFIX"
+    echo "Data files:"
+    FINAL_BAM_FILE=$(final_bam_file $OFPREFIX)
+    echo "$(down_arrow) $(check_exist $FINAL_BAM_FILE) FINAL_BAM_FILE=$FINAL_BAM_FILE"
+    FINAL_BAM_INDEX_FILE=$(final_bam_index_file $OFPREFIX)
+    echo "$(down_arrow) $(check_exist $FINAL_BAM_INDEX_FILE) FINAL_BAM_INDEX_FILE=$FINAL_BAM_INDEX_FILE"
+    echo "QC files:"
+    DUP_FILE_QC=$OFPREFIX.filt.srt.dup.qc
+    echo "$(down_arrow) $(check_exist $DUP_FILE_QC) DUP_FILE_QC=$DUP_FILE_QC"
+    FINAL_BAM_FILE_MAPSTATS="${FINAL_BAM_PREFIX}.flagstat.qc"
+    echo "$(down_arrow) $(check_exist $FINAL_BAM_FILE_MAPSTATS) FINAL_BAM_FILE_MAPSTATS=$FINAL_BAM_FILE_MAPSTATS"
+    PBC_FILE_QC="${FINAL_BAM_PREFIX}.pbc.qc"
+    echo "$(down_arrow) $(check_exist $PBC_FILE_QC) PBC_FILE_QC=$PBC_FILE_QC"
+    
+;;
+2a)
+    echo -e "$UNDERLINE$sample_name for step $(bold $step: Convert SE BAM to tagAlign \(BED 3+3 format\))"
+    FINAL_BAM_FILE=$(final_bam_file $sample_name)
+    echo "$(right_arrow) $(check_exist $FINAL_BAM_FILE) FINAL_BAM_FILE=$FINAL_BAM_FILE"
+    FINAL_TA_FILE=$(final_ta_file $sample_name)
+    echo "$(down_arrow) $(check_exist $FINAL_TA_FILE) FINAL_TA_FILE=$FINAL_TA_FILE"
+    SUBSAMPLED_TA_FILE=$(subsampled_ta_file $sample_name)
+    echo "$(down_arrow) $(check_exist $SUBSAMPLED_TA_FILE) SUBSAMPLED_TA_FILE=$SUBSAMPLED_TA_FILE"
+
+;;
+2b)
+    echo -e "$UNDERLINE$sample_name for step $(bold $step: Calculate Cross-correlation QC scores)"
+    SUBSAMPLED_TA_FILE=$(subsampled_ta_file $sample_name)
+    echo "$(right_arrow) $(check_exist $SUBSAMPLED_TA_FILE) SUBSAMPLED_TA_FILE=$SUBSAMPLED_TA_FILE"
+    echo "*** note: the .gz is excluded henceforth ***"
+    CC_SCORES_FILE=$(cc_scores_file $sample_name)
+    echo "$(down_arrow) $(check_exist $CC_SCORES_FILE) CC_SCORES_FILE=$CC_SCORES_FILE"
+    CC_PLOT_FILE=$(cc_plot_file $sample_name)
+    echo "$(down_arrow) $(check_exist $CC_PLOT_FILE) CC_PLOT_FILE=$CC_PLOT_FILE"
+    
+;;    
+2c)
+    echo -e "$UNDERLINE$sample_name for step $(bold $step: Generate self-pseudoreplicates for each replicate \(SE datasets\))"
+    FINAL_TA_FILE=$sample_name.SE.tagAlign.gz
+    echo "$(right_arrow) $(check_exist $FINAL_TA_FILE) FINAL_TA_FILE=$FINAL_TA_FILE"
+
+    OFPREFIX=${FINAL_TA_FILE/.SE.tagAlign.gz/}
+    SEED=${OFPREFIX}-2c
+    PR_PREFIX="${OFPREFIX}.filt.nodup"
+    echo " $(info) OFPREFIX=${OFPREFIX}"
+    echo " $(info) PR_PREFIX=$PR_PREFIX"
+    echo " $(info) SEED=$SEED"
+    PR1_TA_FILE="${PR_PREFIX}.SE.pr1.tagAlign.gz"
+    PR2_TA_FILE="${PR_PREFIX}.SE.pr2.tagAlign.gz"
+    echo "$(down_arrow) $(check_exist $PR1_TA_FILE) PR1_TA_FILE=$PR1_TA_FILE"
+    echo "$(down_arrow) $(check_exist $PR2_TA_FILE) PR2_TA_FILE=$PR2_TA_FILE"
+;;    
+2d)
+    shift 1
+    if [ $# -ne 4 ];
+    then
+        echo "step 2d requires sample_1 sample_2 control dataset_prefix";
+        exit 1;
+    fi
+
+    sample_1=$1
+    sample_2=$2
+    control=$3
+    DATASET_PREFIX=${4%/} # remove a possible trailing slash
+
+    echo -e "$UNDERLINE$sample_1,$sample_2 => $DATASET_PREFIX for step $(bold $step: Generate pooled dataset and pooled pseudoreplicates)"
+
+    # FINAL_TA_FILE for each sample going to REP1 and REP2
+    REP1_TA_FILE=${DATASET_PREFIX}.Rep1.tagAlign.gz
+    REP2_TA_FILE=${DATASET_PREFIX}.Rep2.tagAlign.gz
+    CONTROL_TA_FILE=${DATASET_PREFIX}.control.tagAlign.gz
+    echo "$(right_arrow) $(check_exist $(final_ta_file $sample_1)) \$FINAL_TA_FILE $(final_ta_file $sample_1) --> REP1_TA_FILE=$(darkgrey $REP1_TA_FILE)"
+    echo "$(right_arrow) $(check_exist $(final_ta_file $sample_2)) \$FINAL_TA_FILE $(final_ta_file $sample_2) --> REP2_TA_FILE=$(darkgrey $REP2_TA_FILE)"
+    echo "$(right_arrow) $(check_exist $(final_ta_file $control)) \$FINAL_TA_FILE $(final_ta_file $control) --> CONTROL_TA_FILE=$(darkgrey $CONTROL_TA_FILE)"
+    # check for subdirectory
+    if [ ! -d $DATASET_PREFIX ];
+    then
+        echo "$(red_x) $DATASET_PREFIX/ DIRECTORY $(red doesn\'t exist)... Stopping."
+        exit 1
+    else
+        echo "$(green_check) $DATASET_PREFIX/ DIRECTORY $(green exists)"
+    fi
+
+    ################
+    # Enter subdir #
+    cd $DATASET_PREFIX
+
+    POOLED_TA_FILE=${DATASET_PREFIX}.Rep0.tagAlign.gz
+
+    # Now check that links were made to the above files
+    echo "$(down_arrow) $(check_exist $REP1_TA_FILE) REP1_TA_FILE=$(darkgrey $REP1_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $REP2_TA_FILE) REP2_TA_FILE=$(darkgrey $REP2_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $POOLED_TA_FILE) POOLED_TA_FILE=$POOLED_TA_FILE"
+
+    REP1_PR1_TA_FILE=${DATASET_PREFIX}.Rep1.pr1.tagAlign.gz
+    REP1_PR2_TA_FILE=${DATASET_PREFIX}.Rep1.pr2.tagAlign.gz
+    
+    REP2_PR1_TA_FILE=${DATASET_PREFIX}.Rep2.pr1.tagAlign.gz
+    REP2_PR2_TA_FILE=${DATASET_PREFIX}.Rep2.pr2.tagAlign.gz
+
+    echo "$(down_arrow) $(check_exist $REP1_PR1_TA_FILE) REP1_PR1_TA_FILE=$REP1_PR1_TA_FILE"
+    echo "$(down_arrow) $(check_exist $REP1_PR2_TA_FILE) REP1_PR2_TA_FILE=$REP1_PR2_TA_FILE"
+    echo "$(down_arrow) $(check_exist $REP2_PR1_TA_FILE) REP2_PR1_TA_FILE=$REP2_PR1_TA_FILE"
+    echo "$(down_arrow) $(check_exist $REP2_PR2_TA_FILE) REP2_PR2_TA_FILE=$REP2_PR2_TA_FILE"
+
+    # pooled pseudoreplicate 1 TA file
+    echo "Pooled pseudoreplicate 1 TA file"
+    PPR1_TA_FILE=${DATASET_PREFIX}.Rep0.pr1.tagAlign.gz
+    echo "$(down_arrow) $(check_exist $PPR1_TA_FILE) PPR1_TA_FILE=$PPR1_TA_FILE"
+
+    # pooled pseudoreplicate 2 TA file
+    echo "Pooled pseudoreplicate 2 TA file"
+    PPR2_TA_FILE=${DATASET_PREFIX}.Rep0.pr2.tagAlign.gz
+    echo "$(down_arrow) $(check_exist $PPR2_TA_FILE) PPR2_TA_FILE=$PPR2_TA_FILE"
+;;
+3a)
+    if [ $# -ne 2 ];
+    then
+        echo "step 3a requires DATASET_PREFIX";
+        exit 1;
+    fi
+    DATASET_PREFIX=${2%/}
+    echo -e "$UNDERLINE$DATASET_PREFIX for $(bold $1: Peak calling - SPP)"
+
+    # check for the BLACKLIST constant
+    echo "$(right_arrow) $(check_exist $BLACKLIST) BLACKLIST=$BLACKLIST"
+
+    # check for subdirectory
+    if [ ! -d $DATASET_PREFIX ];
+    then
+        echo -e "$(right_arrow) $(red_x) $DATASET_PREFIX must be an existing directory."
+        exit 1
+    else
+        echo -e "$(right_arrow) $(green_check) $DATASET_PREFIX directory"
+    fi
+
+    ################
+    # Enter subdir #
+    cd $DATASET_PREFIX
+    
+    echo -e "${UNDERLINE}SPPs to run: $(lightmag FILENAME vs CONTROL)"
+    # check for control
+    CONTROL_TA_FILE=${DATASET_PREFIX}.control.tagAlign.gz
+    CONTROL_SRC_FILE=$(basename $(readlink $CONTROL_TA_FILE))
+    echo "$(right_arrow) $(check_exist $CONTROL_TA_FILE) CONTROL_TA_FILE=$CONTROL_TA_FILE --> $CONTROL_SRC_FILE"
+
+    # detect replicates and their source files
+    REP1=$DATASET_PREFIX.Rep1.tagAlign.gz
+    SAMP1_FILE=$(basename $(readlink $REP1))
+    SAMP1_NAME=${SAMP1_FILE%%.*}
+    REP2=$DATASET_PREFIX.Rep2.tagAlign.gz
+    SAMP2_FILE=$(basename $(readlink $REP2))
+    SAMP2_NAME=${SAMP2_FILE%%.*}
+    echo "$(lightmag 1\) REP1=$REP1, CONTROL=$CONTROL_TA_FILE)"
+    echo "$(right_arrow) $(check_exist $REP1) REP1=$REP1 --> $SAMP1_FILE"
+    echo "  $(info) SAMP1_NAME=$SAMP1_NAME"
+    echo "$(lightmag 2\) REP1=$REP2, CONTROL=$CONTROL_TA_FILE)"
+    echo "$(right_arrow) $(check_exist $REP2) REP2=$REP2 --> $SAMP2_FILE"
+    echo "  $(info) SAMP2_NAME=$SAMP2_NAME"
+
+
+    POOLED_TA_FILE=${DATASET_PREFIX}.Rep0.tagAlign.gz
+    echo "$(lightmag 3\) POOLED_TA_FILE=$POOLED_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $POOLED_TA_FILE) POOLED_TA_FILE=$POOLED_TA_FILE"
+
+    # Pseudoreplicates
+    REP1_PR1_TA_FILE=${DATASET_PREFIX}.Rep1.pr1.tagAlign.gz
+    REP1_PR2_TA_FILE=${DATASET_PREFIX}.Rep1.pr2.tagAlign.gz
+    REP2_PR1_TA_FILE=${DATASET_PREFIX}.Rep2.pr1.tagAlign.gz
+    REP2_PR2_TA_FILE=${DATASET_PREFIX}.Rep2.pr2.tagAlign.gz
+    echo "$(lightmag 4\) REP1_PR1_TA_FILE=$REP1_PR1_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $REP1_PR1_TA_FILE) REP1_PR1_TA_FILE=$REP1_PR1_TA_FILE"
+    echo "$(lightmag 5\) REP1_PR2_TA_FILE=$REP1_PR2_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $REP1_PR2_TA_FILE) REP1_PR2_TA_FILE=$REP1_PR2_TA_FILE"
+    echo "$(lightmag 6\) REP2_PR1_TA_FILE=$REP2_PR1_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $REP2_PR1_TA_FILE) REP2_PR1_TA_FILE=$REP2_PR1_TA_FILE"
+    echo "$(lightmag 7\) REP2_PR2_TA_FILE=$REP2_PR2_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $REP2_PR2_TA_FILE) REP2_PR2_TA_FILE=$REP2_PR2_TA_FILE"
+    # pooled pseudoreplicate 1 TA file
+    echo "Pooled pseudoreplicate 1 TA file"
+    PPR1_TA_FILE=${DATASET_PREFIX}.Rep0.pr1.tagAlign.gz
+    echo "$(lightmag 8\) PPR1_TA_FILE=$PPR1_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $PPR1_TA_FILE) PPR1_TA_FILE=$PPR1_TA_FILE"
+
+    # pooled pseudoreplicate 2 TA file
+    echo "Pooled pseudoreplicate 2 TA file"
+    PPR2_TA_FILE=${DATASET_PREFIX}.Rep0.pr2.tagAlign.gz
+    echo "$(lightmag 9\) PPR2_TA_FILE=$PPR2_TA_FILE against CONTROL=$CONTROL_TA_FILE)"
+    echo "$(down_arrow) $(check_exist $PPR2_TA_FILE) PPR2_TA_FILE=$PPR2_TA_FILE"
+
+    echo "$(underline Fraglength needed by SPP)"
+    # fraglength needed by SPP
+    SAMP1_CC_SCORES_FILE=../$(cc_scores_file $SAMP1_NAME)
+    SAMP2_CC_SCORES_FILE=../$(cc_scores_file $SAMP2_NAME)
+    CONTROL_CC_SCORES_FILE=../$(cc_scores_file ${CONTROL_SRC_FILE%%.*}) ## double %% to extract minimum base name
+    echo "$(right_arrow) $(check_exist $SAMP1_CC_SCORES_FILE)  SAMP1_CC_SCORES_FILE=$SAMP1_CC_SCORES_FILE"
+    echo "$(right_arrow) $(check_exist $SAMP2_CC_SCORES_FILE)  SAMP2_CC_SCORES_FILE=$SAMP2_CC_SCORES_FILE"
+    echo "$(right_arrow) $(check_exist $CONTROL_CC_SCORES_FILE)  CONTROL_CC_SCORES_FILE=$CONTROL_CC_SCORES_FILE"
+    FRAG1=$(cut -f3 $SAMP1_CC_SCORES_FILE)
+    FRAG2=$(cut -f3 $SAMP2_CC_SCORES_FILE)
+    FRAGC=$(cut -f3 $CONTROL_CC_SCORES_FILE)
+    echo "  $(info) FRAG1=$FRAG1"
+    echo "  $(info) FRAG2=$FRAG2"
+    echo "  $(info) FRAGC=$FRAGC"
+    echo "$(underline output directory:) $REL_PEAK_DIR $(check_exist $REL_PEAK_DIR)"
+;;
+*)
+    echo "What job step is $(bold $step)?" >&2
+    exit 1
+
+
+esac
+

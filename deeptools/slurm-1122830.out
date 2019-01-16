@@ -1,0 +1,21 @@
+[/var/spool/slurmd/job1122830/slurm_script] NONENCODE_EMBRYO_computeMatrix_plot.sbatch 
+Mon Jul 30 13:30:53 MDT 2018
+/var/spool/slurmd/job1122830/slurm_script: line 13: /projects/dcking@colostate.edu/test-paths.bashrc: No such file or directory
+computeMatrix reference-point --referencePoint center --missingDataAsZero --binSize 2 -p 12 -S AR100_over_AR103.x150n.bw AR105_over_AR107.x150n.bw AR109_over_AR111.x150n.bw AR128_over_AR130.x150n.bw EO34_over_EO40.x150n.bw -R allEMBRYO_kd_auto_peaks.bed allEMBRYO_kd_auto_peaks_random.bed -a 500 -b 500 -o embryo_NONENCODEdeep.gz
+Preloading the following deepBlue files: AR100_over_AR103.x150n.bw,AR105_over_AR107.x150n.bw,AR109_over_AR111.x150n.bw,AR128_over_AR130.x150n.bw,EO34_over_EO40.x150n.bw
+Traceback (most recent call last):
+  File "/projects/dcking@colostate.edu/bin/computeMatrix", line 13, in <module>
+    main(args)
+  File "/projects/dcking@colostate.edu/lib/python3.5/site-packages/deeptools/computeMatrix.py", line 405, in main
+    regs = db.makeRegions(args.regionsFileName, args)
+  File "/projects/dcking@colostate.edu/lib/python3.5/site-packages/deeptools/deepBlue.py", line 94, in makeRegions
+    itree = GTF(BED, transcriptID=args.transcriptID, transcript_id_designator=args.transcript_id_designator)
+  File "/projects/dcking@colostate.edu/lib/python3.5/site-packages/deeptoolsintervals-0.1.5-py3.5-linux-x86_64.egg/deeptoolsintervals/parse.py", line 584, in __init__
+    fp = openPossiblyCompressed(fname)
+  File "/projects/dcking@colostate.edu/lib/python3.5/site-packages/deeptoolsintervals-0.1.5-py3.5-linux-x86_64.egg/deeptoolsintervals/parse.py", line 102, in openPossiblyCompressed
+    with open(fname, "rb") as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'allEMBRYO_kd_auto_peaks.bed'
+
+real	0m8.245s
+user	0m1.203s
+sys	0m1.562s
